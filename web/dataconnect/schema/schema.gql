@@ -1,0 +1,136 @@
+# ============================================================
+# FitTrack AI - Firebase Data Connect GraphQL Schema
+# ============================================================
+
+type User @table {
+  fullName: String!
+  email: String!
+  authProvider: String!
+  createdAt: Timestamp!
+}
+
+type FitnessProfile @table {
+  user: User!
+  age: Int!
+  gender: String!
+  height: Float!
+  currentWeight: Float!
+  targetWeight: Float!
+  fitnessGoal: String!
+  activityLevel: String!
+}
+
+type FitnessTarget @table {
+  user: User!
+  dailyCalorieTarget: Int!
+  proteinTarget: Int!
+  carbsTarget: Int!
+  fatsTarget: Int!
+  fiberTarget: Int!
+  waterTarget: Int!
+  stepTarget: Int!
+}
+
+type ActivityTracker @table {
+  user: User!
+  date: Date!
+  steps: Int!
+  distance: Float!
+  activeMinutes: Int!
+  caloriesBurned: Int!
+  activityType: String!
+  gpsSessionData: String # Serialized GeoJSON or Path data
+}
+
+type WorkoutPlan @table {
+  user: User!
+  name: String!
+  difficultyLevel: String!
+}
+
+type WorkoutSession @table {
+  user: User!
+  plan: WorkoutPlan
+  workoutDate: Timestamp!
+  duration: Int!
+  difficulty: String!
+  exercises: String! # Serialized JSON: { name, sets, reps }
+}
+
+type FoodDiary @table {
+  user: User!
+  foodName: String!
+  quantity: Float!
+  servingSize: String!
+  calories: Int!
+  protein: Float!
+  carbs: Float!
+  fats: Float!
+  fiber: Float!
+  mealCategory: String!
+  date: Date!
+}
+
+type NutritionTracking @table {
+  user: User!
+  date: Date!
+  consumedNutrition: String! # Serialized JSON: { calories, protein, ... }
+  remainingNutrition: String! # Serialized JSON: { calories, protein, ... }
+}
+
+type WeightHistory @table {
+  user: User!
+  weight: Float!
+  bmi: Float!
+  measurementDate: Date!
+  goalWeight: Float!
+}
+
+type BodyMeasurement @table {
+  user: User!
+  chest: Float
+  waist: Float
+  hips: Float
+  neck: Float
+  bodyFatPercentage: Float
+  recordedDate: Date!
+}
+
+type BodyTransformation @table {
+  user: User!
+  photoUrl: String!
+  avatarUrl: String
+  comparisonDate: Date!
+  notes: String
+}
+
+type DailyAIReport @table {
+  user: User!
+  reportDate: Date!
+  nutritionAnalysis: String!
+  activitySummary: String!
+  achievements: String
+  recommendations: String!
+}
+
+type AIAssistantSession @table {
+  user: User!
+  sessionStart: Timestamp!
+  lastUpdated: Timestamp!
+  conversationHistory: String! # Serialized JSON: Array of messages
+}
+
+type WaterTracking @table {
+  user: User!
+  date: Date!
+  waterConsumedMl: Int!
+  waterTargetMl: Int!
+}
+
+type Notification @table {
+  user: User!
+  title: String!
+  message: String!
+  status: String! # e.g., 'pending', 'read'
+  scheduledTime: Timestamp!
+}

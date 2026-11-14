@@ -1,0 +1,451 @@
+@import "tailwindcss";
+
+/* ============================================================
+   FitTrack AI - Global Styles & Theme
+   ============================================================ */
+
+:root {
+  --color-primary: #2563EB;
+  --color-primary-light: #3b82f6;
+  --color-primary-dark: #1d4ed8;
+  --color-accent: #84cc16;
+  --color-accent-dark: #65a30d;
+
+  --color-dark-bg: #0f172a;
+  --color-dark-card: #1e293b;
+  --color-dark-border: #334155;
+  --color-dark-text: #e2e8f0;
+  --color-dark-muted: #94a3b8;
+
+  --color-light-bg: #ffffff;
+  --color-light-card: #f1f5f9;
+  --color-light-border: #e2e8f0;
+  --color-light-text: #0f172a;
+  --color-light-muted: #64748b;
+
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-success: #22c55e;
+  --color-info: #06b6d4;
+
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+/* --- Base Styles --- */
+:root {
+  --background: var(--color-light-bg);
+  --foreground: var(--color-light-text);
+  --card-bg: var(--color-light-card);
+  --card-border: var(--color-light-border);
+  --muted: var(--color-light-muted);
+}
+
+.dark {
+  --background: var(--color-dark-bg);
+  --foreground: var(--color-dark-text);
+  --card-bg: var(--color-dark-card);
+  --card-border: var(--color-dark-border);
+  --muted: var(--color-dark-muted);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* --- Scrollbar Styling --- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--color-dark-border);
+}
+
+/* --- Progress Ring Animation --- */
+@keyframes progress-ring-fill {
+  from {
+    stroke-dashoffset: var(--ring-circumference, 283);
+  }
+  to {
+    stroke-dashoffset: var(--ring-offset, 0);
+  }
+}
+
+.progress-ring-circle {
+  animation: progress-ring-fill 1s ease-out forwards;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+/* --- Pulse Animation --- */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* --- Fade In Animation --- */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+}
+
+/* --- Slide Up Animation --- */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s ease-out forwards;
+}
+
+/* --- Card Hover Effects --- */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.15);
+}
+
+.dark .card-hover:hover {
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Gradient Text --- */
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* --- Spinner Animation --- */
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+/* --- Loading Dots --- */
+@keyframes loading-dots {
+  0%, 20% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.loading-dot:nth-child(1) { animation: loading-dots 1.4s infinite 0s; }
+.loading-dot:nth-child(2) { animation: loading-dots 1.4s infinite 0.2s; }
+.loading-dot:nth-child(3) { animation: loading-dots 1.4s infinite 0.4s; }
+
+/* --- Toggle Switch --- */
+.toggle-switch {
+  position: relative;
+  width: 48px;
+  height: 26px;
+  background: var(--color-dark-border);
+  border-radius: 13px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.toggle-switch.active {
+  background: var(--color-primary);
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+.toggle-switch.active::after {
+  transform: translateX(22px);
+}
+
+/* --- Input Focus Styles --- */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  ring: 2px;
+  ring-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* --- Glass Effect --- */
+.glass {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* --- Nutrient Bar Animation --- */
+@keyframes bar-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: var(--bar-width, 0%);
+  }
+}
+
+.nutrient-bar-fill {
+  animation: bar-fill 0.8s ease-out forwards;
+}
+
+/* ============================================================
+   FitTrack AI - Light Mode ("White with Light Blue Theme")
+   ============================================================ */
+
+html.light,
+html.light body {
+  background-color: #f0f7ff !important;
+  color: #0f172a !important;
+}
+
+/* Background containers */
+html.light .bg-slate-950 {
+  background-color: #f0f7ff !important;
+}
+
+html.light .bg-slate-950\/70,
+html.light .bg-slate-950\/80 {
+  background-color: #f8fbff !important;
+}
+
+/* Cards & Panels - Pure white with soft light blue border & shadow */
+html.light .bg-slate-900,
+html.light .bg-slate-900\/90,
+html.light .bg-slate-900\/80,
+html.light .bg-slate-900\/70 {
+  background-color: #ffffff !important;
+  box-shadow: 0 4px 20px -2px rgba(37, 99, 235, 0.07), 0 2px 8px -2px rgba(37, 99, 235, 0.04) !important;
+}
+
+/* Headers & Sidebars */
+html.light aside {
+  background-color: #ffffff !important;
+  border-right-color: #e2edff !important;
+  box-shadow: 2px 0 12px rgba(37, 99, 235, 0.05) !important;
+}
+
+html.light header {
+  background-color: rgba(255, 255, 255, 0.88) !important;
+  border-bottom-color: #e2edff !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+html.light nav,
+html.light .mobile-nav-footer,
+html.light [class*="fixed"][class*="bottom-0"] {
+  background-color: rgba(255, 255, 255, 0.98) !important;
+  border-top-color: #dbeafe !important;
+  box-shadow: 0 -4px 20px -2px rgba(37, 99, 235, 0.08) !important;
+}
+
+html.light nav .border-slate-900,
+html.light .mobile-nav-footer .border-slate-900,
+html.light .mobile-nav-footer [class*="border-slate-900"] {
+  border-color: #ffffff !important;
+}
+
+/* Borders */
+html.light .border-slate-800,
+html.light .border-slate-800\/80,
+html.light .border-slate-800\/60,
+html.light .border-slate-800\/90 {
+  border-color: #e0edff !important;
+}
+
+html.light .border-slate-700,
+html.light .border-slate-700\/80 {
+  border-color: #bfdbfe !important;
+}
+
+/* Secondary Tiles and Inputs (Soft light blue) */
+html.light .bg-slate-800,
+html.light .bg-slate-800\/90,
+html.light .bg-slate-800\/80 {
+  background-color: #eaf3ff !important;
+  color: #1e40af !important;
+}
+
+html.light .hover\:bg-slate-800:hover,
+html.light .hover\:bg-slate-800\/80:hover {
+  background-color: #dbeafe !important;
+}
+
+/* Form Inputs, Selects, and Textareas */
+html.light input,
+html.light select,
+html.light textarea {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.light input:focus,
+html.light select:focus,
+html.light textarea:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
+}
+
+/* Typography in Light Mode */
+html.light .text-white {
+  color: #0f172a !important;
+}
+
+html.light .text-slate-100,
+html.light .text-slate-200 {
+  color: #1e293b !important;
+}
+
+html.light .text-slate-300 {
+  color: #334155 !important;
+}
+
+html.light .text-slate-400 {
+  color: #64748b !important;
+}
+
+html.light .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+/* Preserve specific colored accents & buttons */
+html.light .text-blue-400 {
+  color: #2563eb !important;
+}
+
+html.light .text-lime-400 {
+  color: #65a30d !important;
+}
+
+html.light .bg-blue-600 {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+html.light .bg-blue-600 .text-white {
+  color: #ffffff !important;
+}
+
+html.light .bg-lime-400 {
+  background-color: #84cc16 !important;
+  color: #0f172a !important;
+}
+
+html.light .bg-lime-400 .text-slate-950,
+html.light .bg-lime-400 .text-white {
+  color: #0f172a !important;
+}
+
+/* Active Nav link pill */
+html.light .bg-blue-600.text-white {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+/* Range input tracks in light mode */
+html.light input[type="range"] {
+  background-color: #e2edff !important;
+}
+
+/* Quick stat tiles in light mode */
+html.light .bg-slate-800\/50,
+html.light .bg-slate-900\/50 {
+  background-color: #f0f7ff !important;
+  border-color: #dbeafe !important;
+}
+
+/* Hero & Card Gradients in Light Mode */
+html.light .hero-status-card {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  background-image: none !important;
+  border-color: #dbeafe !important;
+  box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.08), 0 8px 10px -6px rgba(37, 99, 235, 0.04) !important;
+}
+
+html.light .hero-status-card .bg-blue-50\/80,
+html.light .hero-status-card [class*="bg-slate-950"] {
+  background-color: #f0f7ff !important;
+  border-color: #dbeafe !important;
+}
+
+html.light .bg-gradient-to-br,
+html.light .bg-gradient-to-tr,
+html.light [class*="bg-gradient-to-"][class*="from-slate-"] {
+  background: #ffffff !important;
+  background-image: none !important;
+  border-color: #dbeafe !important;
+}
+
+/* Ensure buttons with explicit white text remain white in light mode */
+html.light button.bg-blue-600,
+html.light a.bg-blue-600,
+html.light button.bg-blue-600 *,
+html.light a.bg-blue-600 * {
+  color: #ffffff !important;
+}
