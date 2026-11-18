@@ -241,35 +241,55 @@ export async function loadFullUserDataFromFirebase(uid: string, date: string) {
 export async function uploadProfilePhotoToFirebase(uid: string, dataUrl: string): Promise<string> {
   let finalUrl = dataUrl;
 
+  // 1. Try Firebase Storage with a strict 4-second timeout so it NEVER hangs
   try {
-    // 1. Upload to Firebase Storage bucket
     if (storage) {
-      const fileRef = storageRef(storage, `profile_pictures/${uid}/avatar.jpg`);
-      await uploadString(fileRef, dataUrl, 'data_url', {
-        contentType: 'image/jpeg',
-      });
-      const downloadURL = await getDownloadURL(fileRef);
-      if (downloadURL) {
-        finalUrl = downloadURL;
-      }
+      const storagePromise = (async () => {
+        const fileRef = storageRef(storage, `profile_pictures/${uid}/avatar.jpg`);
+        await uploadString(fileRef, dataUrl, 'data_url', {
+          contentType: 'image/jpeg',
+        });
+        const downloadURL = await getDownloadURL(fileRef);
+        return downloadURL || dataUrl;
+      })();
+
+      const timeoutPromise = new Promise<string>((_, reject) =>
+        setTimeout(() => reject(new Error('Firebase Storage timeout (4s)')), 4000)
+      );
+
+      finalUrl = await Promise.race([storagePromise, timeoutPromise]);
     }
   } catch (storageErr) {
-    console.warn('[Firebase Storage] Notice:', storageErr);
+    console.warn('[Firebase Storage] Notice (using local persistence fallback):', storageErr);
   }
 
+  // 2. Update Firebase Auth Profile if authenticated (only accepts http/https URLs)
   try {
-    // 2. Update Firebase Auth Profile if authenticated
     if (auth.currentUser && auth.currentUser.uid === uid) {
-      await updateProfile(auth.currentUser, {
-        photoURL: finalUrl,
-      });
+      if (finalUrl.startsWith('http://') || finalUrl.startsWith('https://')) {
+        await updateProfile(auth.currentUser, {
+          photoURL: finalUrl,
+        });
+      }
     }
+  } catch (authErr) {
+    console.warn('[Firebase Auth] Photo URL update notice:', authErr);
+  }
 
-    // 3. Update Firestore Document
-    const userDocRef = doc(db, 'users', uid);
-    await setDoc(userDocRef, { photoURL: finalUrl, updatedAt: new Date().toISOString() }, { merge: true });
+  // 3. Update Firestore Document with a 3-second timeout
+  try {
+    const firestorePromise = (async () => {
+      const userDocRef = doc(db, 'users', uid);
+      await setDoc(userDocRef, { photoURL: finalUrl, updatedAt: new Date().toISOString() }, { merge: true });
+    })();
+
+    const firestoreTimeout = new Promise<void>((_, reject) =>
+      setTimeout(() => reject(new Error('Firestore timeout (3s)')), 3000)
+    );
+
+    await Promise.race([firestorePromise, firestoreTimeout]);
   } catch (firestoreErr) {
-    console.warn('[Firestore] Profile photo sync error:', firestoreErr);
+    console.warn('[Firestore] Profile photo sync notice:', firestoreErr);
   }
 
   return finalUrl;

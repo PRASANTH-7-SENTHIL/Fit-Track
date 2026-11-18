@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
 import { useAppStore } from '@/store';
 import { logOut, uploadProfilePhotoToFirebase } from '@/lib/firebase';
+import { syncUserAccountToSql } from '@/lib/sql-sync';
 import {
   User,
   Save,
@@ -19,7 +20,7 @@ import {
   Trash2,
   Loader2,
 } from 'lucide-react';
-import { Gender, FitnessGoal, ActivityLevel, PersonalProfile } from '@/types';
+import { Gender, FitnessGoal, ActivityLevel, PersonalProfile, UserProfile } from '@/types';
 import { calculateAllFitnessMetrics } from '@/lib/calculations';
 
 export default function UserProfilePage() {
@@ -50,6 +51,51 @@ export default function UserProfilePage() {
 
   const [savedToast, setSavedToast] = useState(false);
 
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Failed to read image file'));
+      reader.onload = (event) => {
+        const src = event.target?.result as string;
+        if (!src) return reject(new Error('Empty image result'));
+        const img = new window.Image();
+        img.onerror = () => reject(new Error('Failed to decode image'));
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const maxDim = 320;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > maxDim) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              }
+            } else {
+              if (height > maxDim) {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return reject(new Error('Failed to obtain canvas 2D context'));
+            ctx.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+            resolve(dataUrl);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        img.src = src;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -62,70 +108,67 @@ export default function UserProfilePage() {
     setIsUploadingPhoto(true);
 
     try {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const img = new window.Image();
-        img.onload = async () => {
-          const canvas = document.createElement('canvas');
-          const maxDim = 320;
-          let width = img.width;
-          let height = img.height;
+      // 1. Client-side compression
+      const compressedDataUrl = await compressImage(file);
 
-          if (width > height) {
-            if (width > maxDim) {
-              height = Math.round((height * maxDim) / width);
-              width = maxDim;
-            }
-          } else {
-            if (height > maxDim) {
-              width = Math.round((width * maxDim) / height);
-              height = maxDim;
-            }
-          }
+      // 2. OPTIMISTIC UPDATE: instantly show photo in state and store
+      setPhotoURL(compressedDataUrl);
+      if (user) {
+        setUser({ ...user, photoURL: compressedDataUrl });
+      }
+      if (profile) {
+        setProfile({ ...profile, photoURL: compressedDataUrl });
+      }
 
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, width, height);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+      // 3. Save to local SQL & account sync immediately
+      const uid = user?.uid || profile?.uid || 'athlete_01';
+      const userPayload: UserProfile = user
+        ? { ...user, photoURL: compressedDataUrl }
+        : {
+            uid,
+            email: 'athlete@fittrack.ai',
+            displayName: fullName,
+            photoURL: compressedDataUrl,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            onboardingComplete: true,
+            providers: ['password'],
+          };
+      syncUserAccountToSql(userPayload);
 
-            // Upload directly to Firebase Storage & Firestore
-            const uid = user?.uid || profile?.uid || 'athlete_01';
-            const cloudUrl = await uploadProfilePhotoToFirebase(uid, dataUrl);
+      // 4. Upload to Firebase Storage in background (protected by strict 4s timeout)
+      const cloudUrl = await uploadProfilePhotoToFirebase(uid, compressedDataUrl);
+      if (cloudUrl && cloudUrl !== compressedDataUrl) {
+        setPhotoURL(cloudUrl);
+        if (user) setUser({ ...user, photoURL: cloudUrl });
+        if (profile) setProfile({ ...profile, photoURL: cloudUrl });
+        syncUserAccountToSql({ ...userPayload, photoURL: cloudUrl });
+      }
 
-            setPhotoURL(cloudUrl);
-
-            // Update user & profile store immediately so header & sidebar show it
-            if (user) {
-              setUser({ ...user, photoURL: cloudUrl });
-            }
-            if (profile) {
-              setProfile({ ...profile, photoURL: cloudUrl });
-            }
-
-            setSavedToast(true);
-            setTimeout(() => setSavedToast(false), 3000);
-          }
-          setIsUploadingPhoto(false);
-        };
-        img.src = event.target?.result as string;
-      };
-      reader.readAsDataURL(file);
+      setSavedToast(true);
+      setTimeout(() => setSavedToast(false), 3000);
     } catch (err) {
-      console.warn('Image upload error:', err);
+      console.warn('Image processing notice:', err);
+    } finally {
+      // GUARANTEED to stop loading spinner
       setIsUploadingPhoto(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
   const handleRemovePhoto = () => {
     setPhotoURL(undefined);
+    const uid = user?.uid || profile?.uid || 'athlete_01';
     if (user) {
       setUser({ ...user, photoURL: undefined });
+      syncUserAccountToSql({ ...user, photoURL: undefined });
     }
     if (profile) {
       setProfile({ ...profile, photoURL: undefined });
     }
+    uploadProfilePhotoToFirebase(uid, '').catch(() => {});
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -155,6 +198,7 @@ export default function UserProfilePage() {
     setProfile(updated);
     if (user) {
       setUser({ ...user, displayName: fullName, photoURL });
+      syncUserAccountToSql({ ...user, displayName: fullName, photoURL });
     }
 
     // Recalculate metrics
