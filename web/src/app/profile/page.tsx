@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
 import { useAppStore } from '@/store';
-import { logOut, uploadProfilePhotoToFirebase } from '@/lib/firebase';
+import { logOut, uploadProfilePhotoToFirebase, syncProfileToFirestore } from '@/lib/firebase';
 import { syncUserAccountToSql } from '@/lib/sql-sync';
 import {
   User,
@@ -50,6 +50,29 @@ export default function UserProfilePage() {
   const [bodyFat, setBodyFat] = useState<number | undefined>(profile?.bodyFatPercentage || 14.5);
 
   const [savedToast, setSavedToast] = useState(false);
+
+  // Automatically sync form state whenever user or profile data rehydrates or arrives from cloud
+  useEffect(() => {
+    const currentPhoto = profile?.photoURL || user?.photoURL;
+    if (currentPhoto) {
+      setPhotoURL(currentPhoto);
+    }
+    const currentName = profile?.fullName || user?.displayName;
+    if (currentName) {
+      setFullName(currentName);
+    }
+    if (profile?.age) setAge(profile.age);
+    if (profile?.gender) setGender(profile.gender);
+    if (profile?.heightCm) setHeightCm(profile.heightCm);
+    if (profile?.weightKg) setWeightKg(profile.weightKg);
+    if (profile?.fitnessGoal) setFitnessGoal(profile.fitnessGoal);
+    if (profile?.activityLevel) setActivityLevel(profile.activityLevel);
+    if (profile?.chestCm) setChestCm(profile.chestCm);
+    if (profile?.waistCm) setWaistCm(profile.waistCm);
+    if (profile?.hipCm) setHipCm(profile.hipCm);
+    if (profile?.neckCm) setNeckCm(profile.neckCm);
+    if (profile?.bodyFatPercentage) setBodyFat(profile.bodyFatPercentage);
+  }, [profile, user]);
 
   const compressImage = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -138,12 +161,14 @@ export default function UserProfilePage() {
 
       // 4. Upload to Firebase Storage in background (protected by strict 4s timeout)
       const cloudUrl = await uploadProfilePhotoToFirebase(uid, compressedDataUrl);
+      const activePhoto = cloudUrl || compressedDataUrl;
       if (cloudUrl && cloudUrl !== compressedDataUrl) {
         setPhotoURL(cloudUrl);
         if (user) setUser({ ...user, photoURL: cloudUrl });
         if (profile) setProfile({ ...profile, photoURL: cloudUrl });
         syncUserAccountToSql({ ...userPayload, photoURL: cloudUrl });
       }
+      syncProfileToFirestore(uid, { ...(profile || {}), fullName, photoURL: activePhoto });
 
       setSavedToast(true);
       setTimeout(() => setSavedToast(false), 3000);
@@ -167,6 +192,7 @@ export default function UserProfilePage() {
     }
     if (profile) {
       setProfile({ ...profile, photoURL: undefined });
+      syncProfileToFirestore(uid, { ...profile, photoURL: undefined });
     }
     uploadProfilePhotoToFirebase(uid, '').catch(() => {});
     if (fileInputRef.current) {
@@ -200,6 +226,9 @@ export default function UserProfilePage() {
       setUser({ ...user, displayName: fullName, photoURL });
       syncUserAccountToSql({ ...user, displayName: fullName, photoURL });
     }
+
+    const uid = user?.uid || profile?.uid || 'athlete_01';
+    syncProfileToFirestore(uid, updated);
 
     // Recalculate metrics
     const metrics = calculateAllFitnessMetrics(

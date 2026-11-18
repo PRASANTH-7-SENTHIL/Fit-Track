@@ -117,7 +117,15 @@ export function subscribeToAuth(callback: (user: FirebaseUser | null) => void) {
 export async function syncProfileToFirestore(uid: string, profileData: any) {
   try {
     const userRef = doc(db, 'users', uid);
-    await setDoc(userRef, { profile: profileData, updatedAt: new Date().toISOString() }, { merge: true });
+    await setDoc(
+      userRef,
+      {
+        profile: profileData,
+        photoURL: profileData.photoURL || undefined,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
   } catch (err) {
     console.warn('Firestore sync profile error:', err);
   }
@@ -165,7 +173,13 @@ export async function loadProfileFromFirestore(uid: string) {
     const userRef = doc(db, 'users', uid);
     const snap = await getDoc(userRef);
     if (snap.exists()) {
-      return snap.data().profile || null;
+      const data = snap.data();
+      const profile = data.profile || {};
+      const photoURL = data.photoURL || profile.photoURL || undefined;
+      return {
+        ...profile,
+        photoURL,
+      };
     }
   } catch (err) {
     console.warn('Firestore load profile error:', err);
@@ -280,7 +294,15 @@ export async function uploadProfilePhotoToFirebase(uid: string, dataUrl: string)
   try {
     const firestorePromise = (async () => {
       const userDocRef = doc(db, 'users', uid);
-      await setDoc(userDocRef, { photoURL: finalUrl, updatedAt: new Date().toISOString() }, { merge: true });
+      await setDoc(
+        userDocRef,
+        {
+          photoURL: finalUrl,
+          'profile.photoURL': finalUrl,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
     })();
 
     const firestoreTimeout = new Promise<void>((_, reject) =>

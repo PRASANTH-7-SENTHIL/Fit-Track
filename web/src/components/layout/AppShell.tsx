@@ -7,7 +7,7 @@ import MobileNav from '@/components/layout/MobileNav';
 import { useAppStore } from '@/store';
 import { Bell, Moon, Sun, Sparkles, LogOut, Menu } from 'lucide-react';
 import Link from 'next/link';
-import { subscribeToAuth, logOut } from '@/lib/firebase';
+import { subscribeToAuth, logOut, loadProfileFromFirestore } from '@/lib/firebase';
 import { mobileStepSensor } from '@/lib/sensor-step-tracker';
 
 interface AppShellProps {
@@ -36,20 +36,50 @@ export default function AppShell({
       mobileStepSensor.start();
     }
 
-    const unsubscribe = subscribeToAuth((fbUser) => {
+    const unsubscribe = subscribeToAuth(async (fbUser) => {
       if (fbUser) {
+        // Query Firestore cloud document for cross-device sync (e.g. mobile or new browser)
+        let cloudProfile = null;
+        try {
+          cloudProfile = await loadProfileFromFirestore(fbUser.uid);
+        } catch (e) {
+          console.warn('Firestore cloud profile fetch notice:', e);
+        }
+
         const storedUser = useAppStore.getState().user;
         const storedProfile = useAppStore.getState().profile;
+        const resolvedPhotoURL =
+          cloudProfile?.photoURL ||
+          fbUser.photoURL ||
+          storedUser?.photoURL ||
+          storedProfile?.photoURL ||
+          undefined;
+
+        const resolvedDisplayName =
+          cloudProfile?.fullName ||
+          fbUser.displayName ||
+          storedUser?.displayName ||
+          fbUser.email?.split('@')[0] ||
+          'Athlete';
+
         useAppStore.getState().setUser({
           uid: fbUser.uid,
           email: fbUser.email || 'athlete@fittrack.ai',
-          displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'Athlete',
-          photoURL: fbUser.photoURL || storedUser?.photoURL || storedProfile?.photoURL || undefined,
+          displayName: resolvedDisplayName,
+          photoURL: resolvedPhotoURL,
           createdAt: fbUser.metadata.creationTime || new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           onboardingComplete: true,
           providers: fbUser.providerData.map((p) => p.providerId),
         });
+
+        if (cloudProfile) {
+          useAppStore.getState().setProfile({
+            ...cloudProfile,
+            fullName: resolvedDisplayName,
+            photoURL: resolvedPhotoURL,
+          });
+        }
       }
     });
     return () => unsubscribe();
