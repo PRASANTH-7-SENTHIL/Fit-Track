@@ -40,6 +40,7 @@ export async function syncUserAccountToSql(user: UserProfile) {
         fullName: user.displayName,
         email: user.email,
         authProvider: user.providers?.[0] || 'password',
+        photoUrl: user.photoURL,
         createdAt: user.createdAt,
       }),
     });

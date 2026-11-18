@@ -14,6 +14,7 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
   User as FirebaseUser,
+  updateProfile,
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -26,7 +27,13 @@ import {
   addDoc,
   updateDoc,
 } from 'firebase/firestore';
-import { getStorage, FirebaseStorage } from 'firebase/storage';
+import {
+  getStorage,
+  FirebaseStorage,
+  ref as storageRef,
+  uploadString,
+  getDownloadURL,
+} from 'firebase/storage';
 import { Analytics, getAnalytics, isSupported } from 'firebase/analytics';
 
 const firebaseConfig = {
@@ -228,6 +235,44 @@ export async function loadFullUserDataFromFirebase(uid: string, date: string) {
     console.warn('Firestore full load error:', err);
     return null;
   }
+}
+
+// Upload user profile photo to Firebase Storage & Firestore
+export async function uploadProfilePhotoToFirebase(uid: string, dataUrl: string): Promise<string> {
+  let finalUrl = dataUrl;
+
+  try {
+    // 1. Upload to Firebase Storage bucket
+    if (storage) {
+      const fileRef = storageRef(storage, `profile_pictures/${uid}/avatar.jpg`);
+      await uploadString(fileRef, dataUrl, 'data_url', {
+        contentType: 'image/jpeg',
+      });
+      const downloadURL = await getDownloadURL(fileRef);
+      if (downloadURL) {
+        finalUrl = downloadURL;
+      }
+    }
+  } catch (storageErr) {
+    console.warn('[Firebase Storage] Notice:', storageErr);
+  }
+
+  try {
+    // 2. Update Firebase Auth Profile if authenticated
+    if (auth.currentUser && auth.currentUser.uid === uid) {
+      await updateProfile(auth.currentUser, {
+        photoURL: finalUrl,
+      });
+    }
+
+    // 3. Update Firestore Document
+    const userDocRef = doc(db, 'users', uid);
+    await setDoc(userDocRef, { photoURL: finalUrl, updatedAt: new Date().toISOString() }, { merge: true });
+  } catch (firestoreErr) {
+    console.warn('[Firestore] Profile photo sync error:', firestoreErr);
+  }
+
+  return finalUrl;
 }
 
 export { app, auth, db, storage, analytics };

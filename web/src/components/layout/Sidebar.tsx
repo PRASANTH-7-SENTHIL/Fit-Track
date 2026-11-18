@@ -103,8 +103,16 @@ export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
 
         {/* User Quick Info */}
         <div className="p-4 mx-3 my-3 rounded-2xl bg-slate-800/60 border border-slate-700/50 flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-white text-sm shadow">
-            {profile?.fullName ? profile.fullName.charAt(0).toUpperCase() : (user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'U')}
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-white text-sm shadow overflow-hidden shrink-0">
+            {(profile?.photoURL || user?.photoURL) ? (
+              <img
+                src={profile?.photoURL || user?.photoURL}
+                alt={profile?.fullName || 'Athlete'}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              profile?.fullName ? profile.fullName.charAt(0).toUpperCase() : (user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'U')
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-white truncate">

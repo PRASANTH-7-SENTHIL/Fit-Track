@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
       fullName: body.fullName || body.displayName || 'FitTrack Athlete',
       email: body.email,
       authProvider: body.authProvider || 'password',
+      photoUrl: body.photoUrl || body.photoURL,
       createdAt: body.createdAt,
     });
 

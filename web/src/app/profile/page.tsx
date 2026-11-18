@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
 import { useAppStore } from '@/store';
-import { logOut } from '@/lib/firebase';
+import { logOut, uploadProfilePhotoToFirebase } from '@/lib/firebase';
 import {
   User,
   Save,
@@ -16,14 +16,19 @@ import {
   Scale,
   ShieldCheck,
   LogOut,
+  Trash2,
+  Loader2,
 } from 'lucide-react';
-import { Gender, FitnessGoal, ActivityLevel } from '@/types';
+import { Gender, FitnessGoal, ActivityLevel, PersonalProfile } from '@/types';
 import { calculateAllFitnessMetrics } from '@/lib/calculations';
 
 export default function UserProfilePage() {
   const router = useRouter();
   const { user, profile, setProfile, setCalculations, setUser } = useAppStore();
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [photoURL, setPhotoURL] = useState<string | undefined>(profile?.photoURL || user?.photoURL);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [fullName, setFullName] = useState(profile?.fullName || user?.displayName || 'Alex Mercer');
   const [age, setAge] = useState(profile?.age || 26);
   const [gender, setGender] = useState<Gender>(profile?.gender || 'male');
@@ -45,12 +50,94 @@ export default function UserProfilePage() {
 
   const [savedToast, setSavedToast] = useState(false);
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (JPEG, PNG, WebP).');
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const img = new window.Image();
+        img.onload = async () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 320;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+
+            // Upload directly to Firebase Storage & Firestore
+            const uid = user?.uid || profile?.uid || 'athlete_01';
+            const cloudUrl = await uploadProfilePhotoToFirebase(uid, dataUrl);
+
+            setPhotoURL(cloudUrl);
+
+            // Update user & profile store immediately so header & sidebar show it
+            if (user) {
+              setUser({ ...user, photoURL: cloudUrl });
+            }
+            if (profile) {
+              setProfile({ ...profile, photoURL: cloudUrl });
+            }
+
+            setSavedToast(true);
+            setTimeout(() => setSavedToast(false), 3000);
+          }
+          setIsUploadingPhoto(false);
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn('Image upload error:', err);
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setPhotoURL(undefined);
+    if (user) {
+      setUser({ ...user, photoURL: undefined });
+    }
+    if (profile) {
+      setProfile({ ...profile, photoURL: undefined });
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const updated = {
+    const updated: PersonalProfile = {
       uid: user?.uid || profile?.uid || 'athlete_01',
       fullName,
+      photoURL,
       age: Number(age),
       gender,
       heightCm: Number(heightCm),
@@ -66,6 +153,9 @@ export default function UserProfilePage() {
     };
 
     setProfile(updated);
+    if (user) {
+      setUser({ ...user, displayName: fullName, photoURL });
+    }
 
     // Recalculate metrics
     const metrics = calculateAllFitnessMetrics(
@@ -108,24 +198,87 @@ export default function UserProfilePage() {
 
         {/* HEADER PROFILE AVATAR CARD */}
         <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl flex flex-col sm:flex-row items-center gap-6">
-          <div className="relative">
-            <div className="h-24 w-24 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-lime-400 flex items-center justify-center text-3xl font-black text-white shadow-xl shadow-blue-500/20">
-              {fullName.charAt(0).toUpperCase()}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageUpload}
+          />
+
+          <div className="relative group cursor-pointer" onClick={() => !isUploadingPhoto && fileInputRef.current?.click()}>
+            <div className="h-24 w-24 rounded-full overflow-hidden border-2 border-lime-400/40 bg-gradient-to-tr from-blue-600 via-indigo-600 to-lime-400 flex items-center justify-center text-3xl font-black text-white shadow-xl shadow-blue-500/20 relative">
+              {photoURL ? (
+                <img
+                  src={photoURL}
+                  alt={fullName}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                fullName.charAt(0).toUpperCase()
+              )}
+
+              {isUploadingPhoto && (
+                <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-xs flex flex-col items-center justify-center gap-1">
+                  <Loader2 className="h-6 w-6 text-lime-400 animate-spin" />
+                  <span className="text-[9px] font-bold text-white tracking-wide">SAVING...</span>
+                </div>
+              )}
             </div>
-            <button className="absolute bottom-0 right-0 p-2 rounded-full bg-slate-800 border border-slate-700 text-slate-200 hover:text-white shadow-md">
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }}
+              title="Upload profile picture"
+              className="absolute bottom-0 right-0 p-2 rounded-full bg-slate-800 hover:bg-lime-400 hover:text-slate-950 border border-slate-700 text-slate-200 shadow-lg transition-colors"
+            >
               <Camera className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="text-center sm:text-left space-y-1">
-            <h2 className="text-2xl font-black text-white">{fullName}</h2>
-            <p className="text-xs text-slate-400">{user?.email || 'athlete@fittrack.ai'}</p>
+          <div className="text-center sm:text-left space-y-1.5 flex-1">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <h2 className="text-2xl font-black text-white">{fullName}</h2>
+                <p className="text-xs text-slate-400">{user?.email || 'athlete@fittrack.ai'}</p>
+              </div>
+
+              <div className="flex items-center gap-2 justify-center sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingPhoto}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition-all flex items-center gap-1.5"
+                >
+                  <Camera className="h-3.5 w-3.5 text-lime-400" />
+                  <span>{photoURL ? 'Change Photo' : 'Upload Photo'}</span>
+                </button>
+
+                {photoURL && (
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    title="Remove custom photo"
+                    className="p-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 transition-all"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="flex flex-wrap gap-2 pt-2 justify-center sm:justify-start">
               <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase">
                 Goal: {fitnessGoal.replace('_', ' ')}
               </span>
               <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-lime-400/10 text-lime-400 border border-lime-400/20 uppercase">
                 BMI: {bmi}
+              </span>
+              <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                ☁ Firebase Cloud Sync
               </span>
             </div>
           </div>

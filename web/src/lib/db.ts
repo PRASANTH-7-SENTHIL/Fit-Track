@@ -32,9 +32,11 @@ function initSchema(db: DatabaseSync) {
       fullName TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       authProvider TEXT NOT NULL DEFAULT 'password',
+      photoUrl TEXT,
       createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+    try { db.exec('ALTER TABLE users ADD COLUMN photoUrl TEXT;'); } catch {}
 
     -- 2. Fitness Profile Table
     CREATE TABLE IF NOT EXISTS fitness_profiles (
@@ -247,6 +249,7 @@ export function upsertUser(user: {
   fullName: string;
   email: string;
   authProvider?: string;
+  photoUrl?: string;
   createdAt?: string;
 }) {
   const db = getDatabase();
@@ -256,18 +259,19 @@ export function upsertUser(user: {
   if (existing) {
     db.prepare(`
       UPDATE users
-      SET fullName = ?, email = ?, authProvider = COALESCE(?, authProvider), updatedAt = ?
+      SET fullName = ?, email = ?, authProvider = COALESCE(?, authProvider), photoUrl = COALESCE(?, photoUrl), updatedAt = ?
       WHERE id = ?
-    `).run(user.fullName, user.email, user.authProvider || 'password', now, user.id);
+    `).run(user.fullName, user.email, user.authProvider || 'password', user.photoUrl || null, now, user.id);
   } else {
     db.prepare(`
-      INSERT INTO users (id, fullName, email, authProvider, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO users (id, fullName, email, authProvider, photoUrl, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
       user.id,
       user.fullName,
       user.email,
       user.authProvider || 'password',
+      user.photoUrl || null,
       user.createdAt || now,
       now
     );

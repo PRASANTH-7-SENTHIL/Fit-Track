@@ -38,11 +38,13 @@ export default function AppShell({
 
     const unsubscribe = subscribeToAuth((fbUser) => {
       if (fbUser) {
+        const storedUser = useAppStore.getState().user;
+        const storedProfile = useAppStore.getState().profile;
         useAppStore.getState().setUser({
           uid: fbUser.uid,
           email: fbUser.email || 'athlete@fittrack.ai',
           displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'Athlete',
-          photoURL: fbUser.photoURL || undefined,
+          photoURL: fbUser.photoURL || storedUser?.photoURL || storedProfile?.photoURL || undefined,
           createdAt: fbUser.metadata.creationTime || new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           onboardingComplete: true,
@@ -145,11 +147,19 @@ export default function AppShell({
               href="/profile"
               className="flex items-center gap-2 p-1.5 pr-3 rounded-xl bg-slate-800/80 border border-slate-700/80 hover:border-slate-600 transition-colors"
             >
-              <div className="h-7 w-7 rounded-lg bg-gradient-to-tr from-blue-600 to-lime-500 flex items-center justify-center text-xs font-bold text-white">
-                {profile?.fullName?.charAt(0) || 'A'}
+              <div className="h-7 w-7 rounded-lg bg-gradient-to-tr from-blue-600 to-lime-500 flex items-center justify-center text-xs font-bold text-white overflow-hidden shrink-0">
+                {(profile?.photoURL || user?.photoURL) ? (
+                  <img
+                    src={profile?.photoURL || user?.photoURL}
+                    alt={profile?.fullName || 'Athlete'}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  profile?.fullName?.charAt(0) || user?.displayName?.charAt(0) || 'A'
+                )}
               </div>
               <span className="text-xs font-medium text-slate-200 hidden md:block">
-                {profile?.fullName?.split(' ')[0] || 'Athlete'}
+                {profile?.fullName?.split(' ')[0] || user?.displayName?.split(' ')[0] || 'Athlete'}
               </span>
             </Link>
 

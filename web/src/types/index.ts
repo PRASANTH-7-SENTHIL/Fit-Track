@@ -32,6 +32,7 @@ export type ActivityLevel =
 export interface PersonalProfile {
   uid: string;
   fullName: string;
+  photoURL?: string;
   age: number;
   gender: Gender;
   heightCm: number;

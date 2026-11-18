@@ -350,6 +350,7 @@ export const useAppStore = create<AppState>()(
             const loadedProfile: PersonalProfile = {
               uid: userId,
               fullName: p.fullName || data.user?.fullName || 'Athlete',
+              photoURL: p.photoURL || p.photoUrl || data.user?.photoUrl || undefined,
               age: p.age,
               gender: p.gender,
               heightCm: p.height,
@@ -370,6 +371,16 @@ export const useAppStore = create<AppState>()(
               p.fitnessGoal
             );
             updates.calculations = calcs;
+          }
+
+          if (data.user?.photoUrl) {
+            const curUser = get().user;
+            if (curUser) {
+              updates.user = {
+                ...curUser,
+                photoURL: data.user.photoUrl,
+              };
+            }
           }
 
           if (data.target) {
