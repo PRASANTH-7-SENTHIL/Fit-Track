@@ -17,9 +17,11 @@ import {
   CheckCircle2,
   Calendar,
   Zap,
+  MapPin,
 } from 'lucide-react';
 import { ActivityType, ActivityRecord } from '@/types';
 import { calculateCaloriesBurned, calculateDistance } from '@/lib/calculations';
+import RouteHistoryModal from '@/components/map/RouteHistoryModal';
 
 import MobileStepSensorBanner from '@/components/sensor/MobileStepSensorBanner';
 
@@ -42,6 +44,7 @@ export default function ActivityTrackerPage() {
   // Quick activity logger state
   const [selectedActivity, setSelectedActivity] = useState<ActivityType>('walking');
   const [activityDuration, setActivityDuration] = useState(30);
+  const [selectedRouteActivity, setSelectedRouteActivity] = useState<ActivityRecord | null>(null);
 
   const handleAddManualSteps = () => {
     const newSteps = currentSteps + Number(manualStepsInput);
@@ -255,9 +258,20 @@ export default function ActivityTrackerPage() {
                     <Footprints className="h-5 w-5" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-white capitalize">
-                      {act.type.replace('_', ' ')}
-                    </h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-xs font-bold text-white capitalize">
+                        {act.type.replace('_', ' ')}
+                      </h4>
+                      {act.route && act.route.length > 0 && (
+                        <button
+                          onClick={() => setSelectedRouteActivity(act)}
+                          className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-[10px] font-bold text-blue-400 transition-colors"
+                        >
+                          <MapPin className="h-2.5 w-2.5" />
+                          <span>View Map</span>
+                        </button>
+                      )}
+                    </div>
                     <p className="text-[11px] text-slate-400">
                       {act.startTime} • {act.durationMinutes} minutes
                       {act.distanceKm ? ` • ${act.distanceKm} km` : ''}
@@ -333,6 +347,14 @@ export default function ActivityTrackerPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Route History Modal */}
+      {selectedRouteActivity && (
+        <RouteHistoryModal
+          activity={selectedRouteActivity}
+          onClose={() => setSelectedRouteActivity(null)}
+        />
       )}
     </AppShell>
   );

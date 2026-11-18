@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import MobileNav from '@/components/layout/MobileNav';
 import { useAppStore } from '@/store';
-import { Bell, Moon, Sun, Sparkles, LogOut } from 'lucide-react';
+import { Bell, Moon, Sun, Sparkles, LogOut, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { subscribeToAuth, logOut } from '@/lib/firebase';
 import { mobileStepSensor } from '@/lib/sensor-step-tracker';
@@ -26,6 +26,7 @@ export default function AppShell({
   const router = useRouter();
   const { user, profile, theme, toggleTheme, setUser, setProfile } = useAppStore();
   const [mounted, setMounted] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -82,24 +83,40 @@ export default function AppShell({
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased">
-      <Sidebar />
+      <Sidebar
+        mobileOpen={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+      />
 
       {/* Main Content Area */}
       <div className="lg:pl-64 flex flex-col flex-1 pb-20 lg:pb-8">
         {/* Top Header Bar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900/80 backdrop-blur-md px-4 sm:px-6">
-          <div className="flex flex-col">
-            <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-              {title || 'FitTrack AI'}
-              {title === 'Dashboard' && (
-                <span className="text-[10px] font-semibold bg-lime-400/20 text-lime-400 border border-lime-400/30 px-2 py-0.5 rounded-full">
-                  LIVE
-                </span>
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900/80 backdrop-blur-md px-3 sm:px-6">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* Mobile Hamburger Menu Button */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              className="lg:hidden p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 text-slate-300 hover:text-white transition-all active:scale-95 shadow-sm"
+              aria-label="Open Navigation Menu"
+              title="Open Navigation Menu"
+            >
+              <Menu className="h-5 w-5 text-lime-400" />
+            </button>
+
+            <div className="flex flex-col">
+              <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                {title || 'FitTrack AI'}
+                {title === 'Dashboard' && (
+                  <span className="text-[10px] font-semibold bg-lime-400/20 text-lime-400 border border-lime-400/30 px-2 py-0.5 rounded-full">
+                    LIVE
+                  </span>
+                )}
+              </h1>
+              {subtitle && (
+                <p className="text-[11px] text-slate-400 hidden sm:block">{subtitle}</p>
               )}
-            </h1>
-            {subtitle && (
-              <p className="text-[11px] text-slate-400 hidden sm:block">{subtitle}</p>
-            )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">

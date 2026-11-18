@@ -16,11 +16,12 @@ class MobileStepSensorManager {
   private lastStepTimestamp = 0;
   private lastSyncTimestamp = 0;
   private isPeak = false;
-  private minStepIntervalMs = 280; // Maximum ~3.5 steps/second to prevent vibration false triggers
-  private stepThreshold = 1.35; // Acceleration deviation threshold in m/s^2
+  private minStepIntervalMs = 360; // Max ~2.7 steps/second to prevent vibration and false triggers
+  private stepThreshold = 2.4; // Increased threshold so slight tilts/twitches don't trigger (needs real walking impact)
   private gravity = 9.80665;
   private listeners: Set<SensorCallback> = new Set();
   private pendingSyncSteps = 0;
+  private stepImpulseCount = 0; // 2 detected physical movements = 1 step recorded
 
   // Initialize and automatically start listening if device supports motion
   public start() {
@@ -115,6 +116,13 @@ class MobileStepSensorManager {
   }
 
   private onStepDetected(magnitude: number) {
+    this.stepImpulseCount++;
+
+    // 2 detected physical steps/movements = 1 step count increase
+    if (this.stepImpulseCount % 2 !== 0) {
+      return;
+    }
+
     const store = useAppStore.getState();
     const user = store.user;
     const profile = store.profile;
